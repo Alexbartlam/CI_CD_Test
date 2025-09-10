@@ -31,7 +31,7 @@ export default function Home() {
             type="number"
             value={num2}
             onChange={(e) => setNum2(e.target.value)}
-            placeholder="Enter second number"
+            placeholder="Enter second 2number"
             required
           />
         </div>
