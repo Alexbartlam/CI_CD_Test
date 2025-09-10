@@ -1,0 +1,51 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build
+      run: npm run build
+
+    - name: Build Docker image
+      run: |
+        docker build -t number-adder .
+        docker images
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Deploy to production
+      run: |
+        echo "🚀 Deploying to production..."
+        echo "Deployment would happen here"
+        # In a real setup, you would:
+        # 1. Push to Docker registry
+        # 2. Deploy to your server
+        # 3. Run any post-deployment tasks
+
+    - name: Deployment Status
+      run: |
+        echo "✅ Deployment complete"
+        echo "🌐 Application would be live at your-domain.com"
