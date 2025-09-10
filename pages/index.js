@@ -35,7 +35,7 @@ export default function Home() {
             required
           />
         </div>
-        <button type="submit">Add Numbers</button>
+        <button type="Hello">Add Numbers</button>
       </form>
       {sum !== null && (
         <div className="result">

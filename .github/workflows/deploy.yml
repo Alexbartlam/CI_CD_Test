@@ -1,10 +1,15 @@
-name: CI/CD Pipeline
+name: Build and Deploy to Cloud Run
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  SERVICE_NAME: number-adder
 
 jobs:
   build-and-test:
@@ -25,10 +30,22 @@ jobs:
     - name: Build
       run: npm run build
 
-    - name: Build Docker image
+    - name: Google Auth
+      id: auth
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v1'
+
+    - name: Authorize Docker push
+      run: gcloud auth configure-docker
+
+    - name: Build and Push Container
       run: |
-        docker build -t number-adder .
-        docker images
+        docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+        docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
   deploy:
     needs: build-and-test
@@ -36,16 +53,20 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-    - name: Deploy to production
-      run: |
-        echo "🚀 Deploying to production..."
-        echo "Deployment would happen here"
-        # In a real setup, you would:
-        # 1. Push to Docker registry
-        # 2. Deploy to your server
-        # 3. Run any post-deployment tasks
+    - name: Google Auth
+      id: auth
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    - name: Deployment Status
+    - name: Deploy to Cloud Run
       run: |
-        echo "✅ Deployment complete"
-        echo "🌐 Application would be live at your-domain.com"
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --region ${{ env.REGION }} \
+          --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --platform managed \
+          --allow-unauthenticated
+
+    - name: Show Output URL
+      run: |
+        echo "✅ Service deployed to: $(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format 'value(status.url)')"
